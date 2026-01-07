@@ -1,0 +1,129 @@
+Executes PowerShell commands with safety and permission controls.
+
+Available in directory: ${directory}
+
+Supports:
+- Cmdlet execution
+- Pipeline operations
+- Script execution (with execution policy management)
+- Module loading
+- Object serialization
+
+Security features:
+- Command AST analysis
+- Path containment validation
+- Execution policy control
+- Dangerous cmdlet detection
+
+## PowerShell-Specific Usage
+
+### Cmdlets and Pipelines
+PowerShell uses cmdlets (verb-noun commands) and pipelines for data flow:
+
+<good-example>
+command="Get-ChildItem -Path . -Name"
+description="Lists files in current directory"
+</good-example>
+
+<good-example>
+command="Get-Process | Where-Object { $_.CPU -gt 10 } | Select-Object Name, CPU"
+description="Finds high-CPU processes"
+</good-example>
+
+### Execution Policies
+Control script execution security with the executionPolicy parameter:
+
+- **RemoteSigned**: Default, allows local scripts, requires remote scripts to be signed
+- **AllSigned**: Requires all scripts to be signed
+- **Unrestricted**: Allows all scripts (less secure)
+- **Bypass**: No restrictions (most permissive)
+
+<good-example>
+command="Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process; .\\script.ps1"
+executionPolicy="Bypass"
+description="Runs PowerShell script with custom policy"
+</good-example>
+
+### PSDrives and Paths
+PowerShell supports various drive types:
+
+- **File system drives**: C:, D:, etc.
+- **Registry**: HKLM:, HKCU:, etc.
+- **Environment**: Env:
+- **UNC paths**: \\\\server\\share
+
+<good-example>
+command="Get-ChildItem -Path Env:"
+description="Lists environment variables"
+</good-example>
+
+## Usage Guidelines
+
+### Directory Verification
+- If the command will create new directories or files, first use the List tool to verify the parent directory exists
+- For example, before running "New-Item foo/bar", first use List to check that "foo" exists
+
+### Command Execution
+- Always quote file paths that contain spaces with double quotes
+- Examples of proper quoting:
+  - New-Item "C:\My Documents\file.txt" (correct)
+  - New-Item C:\My Documents\file.txt (incorrect - will fail)
+- After ensuring proper quoting, execute the command
+- Capture the output of the command
+
+### Usage Notes
+- The command argument is required
+- You can specify an optional timeout in milliseconds (up to 600000ms / 10 minutes)
+- If not specified, commands timeout after 120000ms (2 minutes)
+- The description argument is required. Write a clear, concise description in 5-10 words
+- If the output exceeds 30000 characters, output will be truncated
+- Avoid using PowerShell for simple file operations when dedicated tools exist:
+  - File search: Use Glob (NOT Get-ChildItem with recursion)
+  - Content search: Use Grep (NOT Select-String)
+  - Read files: Use Read (NOT Get-Content)
+  - Edit files: Use Edit (NOT Set-Content)
+  - Write files: Use Write (NOT Out-File)
+
+### Multiple Commands
+- If commands are independent, make multiple PowerShell tool calls in parallel
+- If commands depend on each other, use a single call with pipeline or semicolon separation
+- Use ";" when you need sequential execution but don't care if earlier commands fail
+- DO NOT use newlines to separate commands
+
+### Working Directory
+The workdir parameter sets the working directory for command execution. Prefer workdir over changing directory within commands.
+
+<good-example>
+workdir="C:\Projects\myapp", command="Get-ChildItem"
+</good-example>
+
+<good-example>
+command="Get-ChildItem C:\Projects\myapp"
+</good-example>
+
+<bad-example>
+command="Set-Location C:\Projects\myapp; Get-ChildItem"
+</bad-example>
+
+## Dangerous Cmdlets
+The following cmdlets require explicit permission and are flagged for security review:
+- Remove-Item, Stop-Process, Set-Service
+- New-ADUser, Remove-ADUser, Restart-Computer
+- Set-ExecutionPolicy, Invoke-Expression
+- And other destructive operations
+
+## Module Loading
+PowerShell can load modules automatically. If your command requires specific modules, they will be loaded as needed. Common modules include:
+- ActiveDirectory
+- Microsoft.PowerShell.Management
+- Microsoft.PowerShell.Security
+
+## Error Handling
+PowerShell provides detailed error information. Check the output for error records and stack traces when commands fail.
+
+## Best Practices
+- Use descriptive cmdlet names (Get-ChildItem vs ls/dir)
+- Leverage PowerShell's object pipeline for complex operations
+- Use execution policies appropriate to your security needs
+- Prefer absolute paths over relative paths for clarity
+- Use PowerShell's built-in help: Get-Help cmdlet-name
